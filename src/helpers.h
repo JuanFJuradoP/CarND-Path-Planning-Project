@@ -34,6 +34,25 @@ constexpr double pi() { return M_PI; }
 double deg2rad(double x) { return x * pi() / 180; }
 double rad2deg(double x) { return x * 180 / pi(); }
 
+// Calculate mean speed of the car
+double speed_measurement_f (double x_speed, double y_speed){
+  double mean_speed_2 = ( (x_speed*x_speed) + (y_speed*y_speed) );
+  double mean_speed = sqrt(mean_speed_2);
+  return mean_speed;
+}
+
+// Update Car speed comparing to max speed allowed in the highway
+double update_speed(double car_speed, double max_speed, double speed_rate){
+  if (car_speed < max_speed){
+    car_speed = car_speed + speed_rate; // The car has to speed up.
+    // std::cout << "Speed up to: " << car_speed << std::endl; //Debug
+  }else if(car_speed > max_speed){
+    car_speed = car_speed - speed_rate; // The car has to speed down.
+    // std::cout << "Speed down to: " << car_speed << std::endl; //Debug
+  }
+  return car_speed;
+}
+
 // Calculate distance between two points
 double distance(double x1, double y1, double x2, double y2) {
   return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
@@ -59,33 +78,44 @@ int ClosestWaypoint(double x, double y, const vector<double> &maps_x,
 }
 
 // Returns next waypoint of the closest waypoint
-int NextWaypoint(double x, double y, double theta, const vector<double> &maps_x, 
-                 const vector<double> &maps_y) {
+int NextWaypoint(double x, double y, double theta, const vector<double> maps_x, 
+                 const vector<double> maps_y, vector<double> maps_dx, 
+                 vector<double> maps_dy) {
   int closestWaypoint = ClosestWaypoint(x,y,maps_x,maps_y);
 
   double map_x = maps_x[closestWaypoint];
   double map_y = maps_y[closestWaypoint];
 
-  double heading = atan2((map_y-y),(map_x-x));
+	//heading vector
+  double hx = map_x-x;
+  double hy = map_y-y;
+    
+  //Normal vector:
+  double nx = maps_dx[closestWaypoint];
+  double ny = maps_dy[closestWaypoint];
+    
+  //Vector into the direction of the road (perpendicular to the normal vector)
+  double vx = -ny;
+  double vy = nx;
 
-  double angle = fabs(theta-heading);
-  angle = std::min(2*pi() - angle, angle);
+  //  If the inner product of v and h is positive then we are behind the waypoint so we do 
+  //  not need to increment closestWaypoint, otherwise we are beyond the waypoint and we
+  //  need to increment closestWaypoint.
 
-  if (angle > pi()/2) {
-    ++closestWaypoint;
-    if (closestWaypoint == maps_x.size()) {
-      closestWaypoint = 0;
-    }
+  double inner = hx*vx+hy*vy;
+  if (inner<0.0) {
+      closestWaypoint++;
   }
-
-  return closestWaypoint;
+    return closestWaypoint;
 }
 
 // Transform from Cartesian x,y coordinates to Frenet s,d coordinates
 vector<double> getFrenet(double x, double y, double theta, 
                          const vector<double> &maps_x, 
-                         const vector<double> &maps_y) {
-  int next_wp = NextWaypoint(x,y, theta, maps_x,maps_y);
+                         const vector<double> &maps_y,
+                         vector<double> &maps_dx, 
+                         vector<double> &maps_dy) {
+  int next_wp = NextWaypoint(x,y, theta, maps_x,maps_y, maps_dx, maps_dy);
 
   int prev_wp;
   prev_wp = next_wp-1;
